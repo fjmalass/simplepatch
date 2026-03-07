@@ -1,0 +1,185 @@
+[config]
+# Disable default cargo/rust tasks since this is a Go project
+skip_core_tasks = true
+
+[env]
+BIN_DIR = "bin"
+
+# =============================================================================
+# Default task
+# =============================================================================
+[tasks.default]
+alias = "build"
+
+# =============================================================================
+# Build tasks
+# =============================================================================
+[tasks.build]
+description = "Build all binaries"
+dependencies = ["build-cli", "build-tui"]
+
+[tasks.build-cli]
+description = "Build the CLI binary"
+script = '''
+mkdir -p ${BIN_DIR}
+go build -o ${BIN_DIR}/simplepatch ./cmd/simplepatch
+echo "Built: ${BIN_DIR}/simplepatch"
+'''
+
+[tasks.build-tui]
+description = "Build the TUI binary"
+script = '''
+mkdir -p ${BIN_DIR}
+go build -o ${BIN_DIR}/simplepatch-tui ./cmd/simplepatch-tui
+echo "Built: ${BIN_DIR}/simplepatch-tui"
+'''
+
+[tasks.build-release]
+description = "Build release binaries with optimizations"
+script = '''
+mkdir -p ${BIN_DIR}
+go build -ldflags="-s -w" -o ${BIN_DIR}/simplepatch ./cmd/simplepatch
+go build -ldflags="-s -w" -o ${BIN_DIR}/simplepatch-tui ./cmd/simplepatch-tui
+echo "Built release binaries in ${BIN_DIR}/"
+'''
+
+# =============================================================================
+# Development tasks
+# =============================================================================
+[tasks.run]
+description = "Run the CLI with arguments"
+script = '''
+go run ./cmd/simplepatch ${@}
+'''
+
+[tasks.run-tui]
+description = "Run the TUI"
+script = '''
+go run ./cmd/simplepatch-tui
+'''
+
+[tasks.dev]
+description = "Build and run CLI with sample dry-run"
+dependencies = ["build-cli"]
+script = '''
+./${BIN_DIR}/simplepatch patch --dry-run --verbose \
+    --patches-root=samples/v2 \
+    --original-root=samples \
+    --map=samples/patches_files.map
+'''
+
+# =============================================================================
+# Test tasks
+# =============================================================================
+[tasks.test]
+description = "Run all tests"
+script = '''
+go test ./...
+'''
+
+[tasks.test-verbose]
+description = "Run tests with verbose output"
+script = '''
+go test -v ./...
+'''
+
+[tasks.test-coverage]
+description = "Run tests with coverage report"
+script = '''
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out -o coverage.html
+echo "Coverage report: coverage.html"
+'''
+
+# =============================================================================
+# Lint and format tasks
+# =============================================================================
+[tasks.fmt]
+description = "Format Go code"
+script = '''
+go fmt ./...
+'''
+
+[tasks.lint]
+description = "Run golangci-lint"
+script = '''
+golangci-lint run ./...
+'''
+
+[tasks.vet]
+description = "Run go vet"
+script = '''
+go vet ./...
+'''
+
+[tasks.check]
+description = "Run all checks (fmt, vet, lint, test)"
+dependencies = ["fmt", "vet", "test"]
+
+# =============================================================================
+# Clean tasks
+# =============================================================================
+[tasks.clean]
+description = "Clean build artifacts"
+script = '''
+rm -rf ${BIN_DIR}
+rm -f coverage.out coverage.html
+echo "Cleaned build artifacts"
+'''
+
+# =============================================================================
+# Install tasks
+# =============================================================================
+[tasks.install]
+description = "Install binaries to GOPATH/bin"
+script = '''
+go install ./cmd/simplepatch
+go install ./cmd/simplepatch-tui
+echo "Installed simplepatch and simplepatch-tui to GOPATH/bin"
+'''
+
+# =============================================================================
+# Dependency tasks
+# =============================================================================
+[tasks.deps]
+description = "Download and tidy dependencies"
+script = '''
+go mod download
+go mod tidy
+echo "Dependencies updated"
+'''
+
+[tasks.deps-update]
+description = "Update all dependencies to latest"
+script = '''
+go get -u ./...
+go mod tidy
+echo "Dependencies updated to latest versions"
+'''
+
+# =============================================================================
+# Help task
+# =============================================================================
+[tasks.help]
+description = "Show available tasks"
+script = '''
+echo "Available tasks:"
+echo "  build          - Build all binaries"
+echo "  build-cli      - Build the CLI binary"
+echo "  build-tui      - Build the TUI binary"
+echo "  build-release  - Build optimized release binaries"
+echo "  run            - Run the CLI (pass args after --)"
+echo "  run-tui        - Run the TUI"
+echo "  dev            - Build and run CLI with sample dry-run"
+echo "  test           - Run all tests"
+echo "  test-verbose   - Run tests with verbose output"
+echo "  test-coverage  - Run tests with coverage report"
+echo "  fmt            - Format Go code"
+echo "  lint           - Run golangci-lint"
+echo "  vet            - Run go vet"
+echo "  check          - Run all checks (fmt, vet, test)"
+echo "  clean          - Clean build artifacts"
+echo "  install        - Install binaries to GOPATH/bin"
+echo "  deps           - Download and tidy dependencies"
+echo "  deps-update    - Update all dependencies to latest"
+'''

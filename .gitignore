@@ -1,0 +1,51 @@
+# Binary executables
+# ------------------
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Specific binary output (standard Go build names)
+bin/
+out/
+dist/
+
+# Test and coverage artifacts
+# ---------------------------
+*.test
+*.out
+coverage.txt
+
+# Dependency directories
+# ----------------------
+# Most Go projects use Go Modules and don't check in /vendor.
+# Only uncomment if you explicitly want to exclude vendored code.
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# IDE / Editor folders
+# --------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+# ------------------
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# Local environment variables
+# ---------------------------
+.env
+.env.local
+
+# Backup files created by simplepatch
+# ------------------------------------
+*.backup_*
