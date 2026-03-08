@@ -72,13 +72,7 @@ func (c *RevertCmd) resolveDefaults() error {
 // PerformRevert restores original files from backups
 func PerformRevert(cfg *RevertCmd, logger log.Logger) error {
 	logger.Debug("starting revert", "config", fmt.Sprintf("%+v", cfg))
-
-	styles := newStyles()
-
-	// Print banner
-	fmt.Println(styles.Title.Render("  Revert from Backups"))
-	fmt.Println(styles.Dim.Render("=================================================="))
-	fmt.Println()
+	logger.Info("=== Revert from Backups ===")
 
 	// Validate patches root exists
 	logger.Debug("validating patches root", "path", cfg.PatchesRoot)
@@ -113,16 +107,13 @@ func PerformRevert(cfg *RevertCmd, logger log.Logger) error {
 	}
 
 	if cfg.DryRun {
-		logger.Info("dry-run mode enabled")
-		fmt.Println(styles.Header.Render("[DRY-RUN] No files will be modified"))
-		fmt.Println()
+		logger.Info("[DRY-RUN] no files will be modified")
 	}
 
-	// Process each mapping
 	if cfg.UseLatest {
-		fmt.Println(styles.Header.Render("Reverting from newest backups..."))
+		logger.Info("reverting from newest backups")
 	} else {
-		fmt.Println(styles.Header.Render("Reverting from oldest backups..."))
+		logger.Info("reverting from oldest backups")
 	}
 
 	revertedCount := 0
@@ -130,26 +121,16 @@ func PerformRevert(cfg *RevertCmd, logger log.Logger) error {
 	var errors []error
 
 	for _, m := range mappings {
-		relPatched, _ := filepath.Rel(cfg.PatchesRoot, m.Patched)
-		relOriginal, _ := filepath.Rel(cfg.OriginalRoot, m.Original)
-
 		// Find backups for this file
 		backups, err := operations.FindBackupsForFile(m.Patched, logger)
 		if err != nil {
 			logger.Warn("failed to find backups", "patched", m.Patched, "err", err)
-			fmt.Printf("  %s: %s - %v\n",
-				styles.Error.Render("Error"),
-				styles.Path.Render(relPatched),
-				err)
 			errors = append(errors, err)
 			continue
 		}
 
 		if len(backups) == 0 {
 			logger.Warn("no backup found", "patched", m.Patched)
-			fmt.Printf("  %s: No backup found for %s\n",
-				styles.Dim.Render("Warning"),
-				styles.Path.Render(relPatched))
 			skippedCount++
 			continue
 		}
@@ -161,78 +142,46 @@ func PerformRevert(cfg *RevertCmd, logger log.Logger) error {
 			continue
 		}
 
-		relBackup, _ := filepath.Rel(cfg.PatchesRoot, backup.Path)
-
 		if cfg.DryRun {
-			fmt.Printf("  %s: %s -> %s\n",
-				styles.Dim.Render("[DRY-RUN]"),
-				styles.Path.Render(relBackup),
-				styles.Path.Render(relOriginal))
-
+			logger.Info("[DRY-RUN] would revert", "from", backup.Path, "to", m.Original)
 			if cfg.Cleanup {
-				fmt.Printf("           %s would delete: %s\n",
-					styles.Dim.Render("(cleanup)"),
-					styles.Path.Render(relBackup))
+				logger.Info("[DRY-RUN] would delete backup", "path", backup.Path)
 			}
 			revertedCount++
 		} else {
 			// Perform the revert
 			err := operations.RevertFile(*backup, m.Original, false, logger)
 			if err != nil {
-				fmt.Printf("  %s: %s - %v\n",
-					styles.Error.Render("Failed"),
-					styles.Path.Render(relPatched),
-					err)
+				logger.Error("failed to revert", "patched", m.Patched, "err", err)
 				errors = append(errors, err)
 				continue
 			}
 
-			fmt.Printf("  %s: %s (backup: %s)\n",
-				styles.Success.Render("Reverted"),
-				styles.Path.Render(relOriginal),
-				backup.Time.Format("2006-01-02 15:04:05"))
-
+			logger.Info("reverted", "to", m.Original, "backup_time", backup.Time.Format("2006-01-02 15:04:05"))
 			revertedCount++
 
 			// Cleanup if requested
 			if cfg.Cleanup {
 				err := operations.DeleteBackup(*backup, false, logger)
 				if err != nil {
-					fmt.Printf("    %s: Failed to delete backup - %v\n",
-						styles.Error.Render("Warning"),
-						err)
+					logger.Warn("failed to delete backup", "path", backup.Path, "err", err)
 				} else {
-					fmt.Printf("    %s: %s\n",
-						styles.Dim.Render("Cleaned"),
-						styles.Path.Render(relBackup))
+					logger.Info("cleaned backup", "path", backup.Path)
 				}
 			}
 		}
 	}
 
 	// Summary
-	fmt.Println()
 	if cfg.DryRun {
-		fmt.Printf("Would revert %s files",
-			styles.Header.Render(fmt.Sprintf("%d", revertedCount)))
+		logger.Info("dry-run complete", "would_revert", revertedCount, "skipped", skippedCount)
 	} else {
-		fmt.Printf("%s reverted %s files",
-			styles.Success.Render("Successfully"),
-			styles.Header.Render(fmt.Sprintf("%d", revertedCount)))
+		if len(errors) > 0 {
+			logger.Error("revert completed with errors", "reverted", revertedCount, "skipped", skippedCount, "errors", len(errors))
+		} else {
+			logger.Info("revert completed", "reverted", revertedCount, "skipped", skippedCount)
+		}
 	}
-
-	if skippedCount > 0 {
-		fmt.Printf(" (%s skipped - no backup)",
-			styles.Dim.Render(fmt.Sprintf("%d", skippedCount)))
-	}
-
-	if len(errors) > 0 {
-		fmt.Printf(" (%s errors)",
-			styles.Error.Render(fmt.Sprintf("%d", len(errors))))
-	}
-
-	fmt.Println()
-	fmt.Println()
 
 	if len(errors) > 0 {
 		return fmt.Errorf("revert completed with %d errors", len(errors))

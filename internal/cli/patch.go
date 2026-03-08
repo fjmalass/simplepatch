@@ -12,13 +12,7 @@ import (
 
 func PerformPatch(cfg *Config, logger log.Logger) error {
 	logger.Debug("starting patch", "config", fmt.Sprintf("%+v", cfg))
-
-	styles := newStyles()
-
-	// Print banner
-	fmt.Println(styles.Title.Render("  Copy Patched Files (Cross-Platform)"))
-	fmt.Println(styles.Dim.Render("=================================================="))
-	fmt.Println()
+	logger.Info("=== Copy Patched Files ===")
 
 	// Validate original root exists
 	logger.Debug("validating original root", "path", cfg.OriginalRoot)
@@ -59,58 +53,46 @@ func PerformPatch(cfg *Config, logger log.Logger) error {
 	logger.Debug("generated timestamp", "timestamp", timestamp)
 
 	if cfg.DryRun {
-		logger.Info("dry-run mode enabled")
-		fmt.Println(styles.Header.Render("[DRY-RUN] No files will be modified"))
-		fmt.Println()
+		logger.Info("[DRY-RUN] no files will be modified")
 	}
 
 	// Phase 1: Backup existing originals
 	if cfg.Backup {
-		logger.Info("starting backup phase")
-		fmt.Println(styles.Header.Render("Backing up existing files (if they exist)..."))
-
+		logger.Info("backing up existing files")
 		for _, m := range mappings {
 			backupDir := filepath.Dir(m.Patched)
 			err := operations.BackupOriginal(m.Original, backupDir, timestamp, cfg.DryRun, logger)
 			if err != nil {
-				fmt.Println(styles.Error.Render(fmt.Sprintf("  Failed to backup %s: %v", m.Original, err)))
+				logger.Error("failed to backup", "path", m.Original, "err", err)
 			}
 		}
-		fmt.Println()
 	}
 
 	// Phase 2: Copy patched -> original
-	logger.Info("starting copy phase")
-	fmt.Println(styles.Header.Render("Copying patched files to original locations..."))
+	logger.Info("copying patched files", "to", cfg.OriginalRoot)
 
-	success := true
+	successCount := 0
+	errorCount := 0
 	for _, m := range mappings {
 		err := operations.CopyPatchedToOriginal(m.Patched, m.Original, cfg.DryRun, logger)
 		if err != nil {
-			fmt.Println(styles.Error.Render(fmt.Sprintf("  Failed: %v", err)))
-			success = false
+			logger.Error("failed to copy", "err", err)
+			errorCount++
 		} else if !cfg.DryRun {
-			fmt.Printf("  %s: %s -> %s\n",
-				styles.Success.Render("Copied"),
-				styles.Path.Render(m.Patched),
-				styles.Path.Render(m.Original))
+			logger.Info("copied", "from", m.Patched, "to", m.Original)
+			successCount++
 		}
 	}
 
 	// Summary
-	fmt.Println()
-	if success {
-		logger.Info("patch completed successfully")
-		fmt.Println(styles.Success.Render("Files patched successfully."))
-		fmt.Println("\nYou can now edit:")
-		for _, m := range mappings {
-			fmt.Printf("  %s\n", styles.Path.Render(m.Patched))
+	if errorCount == 0 {
+		logger.Info("patch completed successfully", "count", successCount)
+		for i, m := range mappings {
+			logger.Info("Patched", "index", i, "path", m.Patched)
 		}
 	} else {
-		logger.Error("patch completed with errors")
-		fmt.Println(styles.Error.Render("Some errors occurred - check above."))
+		logger.Error("patch completed with errors", "errors", errorCount, "total", errorCount+successCount)
 	}
-	fmt.Println()
 
 	return nil
 }

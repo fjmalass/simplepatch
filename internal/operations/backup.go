@@ -81,7 +81,7 @@ func BackupOriginal(originalPath, backupDir, timestamp string, dryRun bool, logg
 	// Check if original exists
 	if _, err := os.Stat(originalPath); os.IsNotExist(err) {
 		logger.Debug("original file does not exist, skipping backup", "path", originalPath)
-		fmt.Printf("  No existing file: %s (no backup needed)\n", originalPath)
+		logger.Info("no existing file, skipping backup", "path", originalPath)
 		return nil
 	}
 
@@ -89,16 +89,15 @@ func BackupOriginal(originalPath, backupDir, timestamp string, dryRun bool, logg
 
 	if dryRun {
 		logger.Debug("dry-run: would backup", "from", originalPath, "to", backupPath)
-		fmt.Printf("  [DRY-RUN] Would backup: %s -> %s\n", originalPath, backupPath)
+		logger.Info("[DRY-RUN] would backup", "from", originalPath, "to", backupPath)
 		return nil
 	}
 
-	logger.Info("backing up file", "from", originalPath, "to", backupPath)
+	logger.Info("backed up", "from", originalPath, "to", backupPath)
 	if err := CopyFile(originalPath, backupPath, logger); err != nil {
 		return fmt.Errorf("backup failed: %w", err)
 	}
 
-	fmt.Printf("  Backed up: %s -> %s\n", originalPath, backupPath)
 	return nil
 }
 
@@ -114,7 +113,7 @@ func CopyPatchedToOriginal(patchedPath, originalPath string, dryRun bool, logger
 
 	if dryRun {
 		logger.Debug("dry-run: would copy", "from", patchedPath, "to", originalPath)
-		fmt.Printf("  [DRY-RUN] Would copy: %s -> %s\n", patchedPath, originalPath)
+		logger.Info("[DRY-RUN] would copy", "from", patchedPath, "to", originalPath)
 		return nil
 	}
 

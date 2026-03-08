@@ -52,7 +52,7 @@ func resolveDefaults(cfg *Config) error {
 		errs = append(errs, err)
 	}
 
-	// Make absolutin mappingPath
+	// Make absolute mappingPath
 	if !filepath.IsAbs(cfg.MappingPath) {
 		cfg.MappingPath = filepath.Join(cfg.PatchesRoot, cfg.MappingPath)
 	}

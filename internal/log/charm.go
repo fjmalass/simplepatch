@@ -8,6 +8,24 @@ import (
 	cl "github.com/charmbracelet/log"
 )
 
+// Option configures a Logger during construction
+type Option func(*charmWrapper) error
+
+// WithFile adds file output (logs to both stderr and file)
+func WithFile(path string) Option {
+	return func(c *charmWrapper) error {
+		return c.AddFile(path)
+	}
+}
+
+// WithLevel sets the log level
+func WithLevel(level Level) Option {
+	return func(c *charmWrapper) error {
+		c.SetLevel(level)
+		return nil
+	}
+}
+
 type charmWrapper struct {
 	inner  *cl.Logger
 	mu     sync.Mutex
@@ -31,25 +49,49 @@ func toCharmLevel(l Level) cl.Level {
 	}
 }
 
-// NewIconLogger creates a logger with text format
-func NewIconLogger() Logger {
+// NewIconLogger creates a logger with text format and emoji prefixes
+func NewIconLogger(opts ...Option) (Logger, error) {
 	l := cl.NewWithOptions(os.Stderr, cl.Options{
 		Level:           cl.InfoLevel,
 		ReportTimestamp: true,
 	})
 
-	return &charmWrapper{inner: l}
+	// Set emoji-style level prefixes
+	styles := cl.DefaultStyles()
+	styles.Levels[cl.DebugLevel] = styles.Levels[cl.DebugLevel].SetString("🐛")
+	styles.Levels[cl.InfoLevel] = styles.Levels[cl.InfoLevel].SetString("💡")
+	styles.Levels[cl.WarnLevel] = styles.Levels[cl.WarnLevel].SetString("⚠️")
+	styles.Levels[cl.ErrorLevel] = styles.Levels[cl.ErrorLevel].SetString("🚨")
+	l.SetStyles(styles)
+
+	wrapper := &charmWrapper{inner: l}
+
+	for _, opt := range opts {
+		if err := opt(wrapper); err != nil {
+			return nil, err
+		}
+	}
+
+	return wrapper, nil
 }
 
 // NewJSONLogger creates a JSON-formatted logger
-func NewJSONLogger() Logger {
+func NewJSONLogger(opts ...Option) (Logger, error) {
 	l := cl.NewWithOptions(os.Stderr, cl.Options{
 		Level:           cl.InfoLevel,
 		ReportTimestamp: true,
 		Formatter:       cl.JSONFormatter,
 	})
 
-	return &charmWrapper{inner: l}
+	wrapper := &charmWrapper{inner: l}
+
+	for _, opt := range opts {
+		if err := opt(wrapper); err != nil {
+			return nil, err
+		}
+	}
+
+	return wrapper, nil
 }
 
 func (c *charmWrapper) SetLevel(level Level) {
