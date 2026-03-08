@@ -28,7 +28,11 @@ pyproject.toml -> pyproject.toml
 dpt.py -> depth_anything_v2/dpt.py
 ```
 
-Use `simplepatch --help` or `simplepatch <command> --help` to see available flags.
+**Global flags:**
+- `-v, --verbose` - Enable debug logging
+- `-l, --log FILE` - Write logs to file
+
+Use `simplepatch --help` or `simplepatch <command> --help` to see all available flags.
 
 ## Example
 
