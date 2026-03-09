@@ -4,6 +4,7 @@ skip_core_tasks = true
 
 [env]
 BIN_DIR = "bin"
+VERSION = { script = ["git describe --tags --always --dirty 2>/dev/null || echo dev"] }
 
 # =============================================================================
 # Default task
@@ -22,8 +23,8 @@ dependencies = ["build-cli", "build-tui"]
 description = "Build the CLI binary"
 script = '''
 mkdir -p ${BIN_DIR}
-go build -o ${BIN_DIR}/simplepatch ./cmd/simplepatch
-echo "Built: ${BIN_DIR}/simplepatch"
+go build -ldflags="-X main.version=${VERSION}" -o ${BIN_DIR}/simplepatch ./cmd/simplepatch
+echo "Built: ${BIN_DIR}/simplepatch (${VERSION})"
 '''
 
 [tasks.build-tui]
@@ -38,9 +39,9 @@ echo "Built: ${BIN_DIR}/simplepatch-tui"
 description = "Build release binaries with optimizations"
 script = '''
 mkdir -p ${BIN_DIR}
-go build -ldflags="-s -w" -o ${BIN_DIR}/simplepatch ./cmd/simplepatch
+go build -ldflags="-s -w -X main.version=${VERSION}" -o ${BIN_DIR}/simplepatch ./cmd/simplepatch
 go build -ldflags="-s -w" -o ${BIN_DIR}/simplepatch-tui ./cmd/simplepatch-tui
-echo "Built release binaries in ${BIN_DIR}/"
+echo "Built release binaries in ${BIN_DIR}/ (${VERSION})"
 '''
 
 # =============================================================================
